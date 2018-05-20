@@ -6,14 +6,37 @@ import (
 	"fmt"
 	"time"
 	"bytes"
+	"encoding/json"
 )
+
+// Block is one block from blockchain
+type Block struct {
+	Timestamp time.Time `json:"timestamp"`
+	LastHash  BlockHash `json:"lastHash"`
+	Hash      BlockHash `json:"hash"`
+	Data      BlockData `json:"data"`
+}
 
 // BlockHash is hash used in blockchain
 type BlockHash []byte
 
+// BlockData is just byte slice for now
+type BlockData []byte
+
+
 // MarshalBinary Represents BlockHash as byte slice
 func (hash BlockHash) MarshalBinary() []byte {
 	return []byte(hash)
+}
+
+// MarshalJSON encodes BlockHash as hex digits
+func (hash BlockHash) MarshalJSON() ([]byte, error) {
+	hashString := hash.String()
+	marshaledString, err := json.Marshal(hashString)
+	if err != nil {
+		return nil, err
+	}
+	return marshaledString, nil
 }
 
 // Eq checks equality of 2 hashes
@@ -28,20 +51,20 @@ func (hash BlockHash) String() string {
 	return hex.EncodeToString(hash)
 }
 
-// BlockData is just byte slice for now
-type BlockData []byte
 
 // MarshalBinary represents BlockData as byte slice
 func (data BlockData) MarshalBinary() []byte {
 	return []byte(data)
 }
 
-// Block is one block from blockchain
-type Block struct {
-	Timestamp time.Time
-	LastHash  BlockHash
-	Hash      BlockHash
-	Data      BlockData
+// MarshalJSON returns BlockData as string
+func (data BlockData) MarshalJSON() ([]byte, error) {
+	dataString := string(data)
+	marshaledString, err := json.Marshal(dataString)
+	if err != nil {
+		return nil, err
+	}
+	return marshaledString, nil
 }
 
 func (block Block) String() string {
@@ -57,6 +80,7 @@ func (block Block) String() string {
 func (block Block) checkHash() bool {
 	return bytes.Equal(block.Hash, Hash(block.Timestamp, block.LastHash, block.Data))
 }
+
 
 // Genesis return genesis block
 func Genesis() Block {

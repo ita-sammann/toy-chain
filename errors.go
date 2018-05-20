@@ -1,12 +1,8 @@
 package toy_chain
 
-type Error string
+import "errors"
 
-func (e Error) Error() string {
-	return string(e)
-}
-
-const (
-	ErrChainReplaceTooShort = Error("blockchain: replacement chain is too short")
-	ErrChainReplaceInvalid = Error("blockchain: replacement chain is invalid")
+var (
+	ErrChainReplaceTooShort = errors.New("blockchain: replacement chain is too short")
+	ErrChainReplaceInvalid = errors.New("blockchain: replacement chain is invalid")
 )

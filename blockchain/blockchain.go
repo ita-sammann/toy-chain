@@ -63,3 +63,8 @@ func (bc *Blockchain) ReplaceChain(newChain Blockchain) error {
 	bc.chain = newChain.chain
 	return nil
 }
+
+// ListBlocks returns slice of blocks in chain
+func (bc Blockchain) ListBlocks() []Block {
+	return bc.chain
+}
