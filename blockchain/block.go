@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"time"
+	"bytes"
 )
 
 // BlockHash is hash used in blockchain
@@ -43,6 +44,10 @@ func (block Block) String() string {
 		block.Hash,
 		block.Data,
 	)
+}
+
+func (block Block) checkHash() bool {
+	return bytes.Equal(block.Hash, Hash(block.Timestamp, block.LastHash, block.Data))
 }
 
 // Genesis return genesis block
