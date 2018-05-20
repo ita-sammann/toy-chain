@@ -67,6 +67,16 @@ func (data BlockData) MarshalJSON() ([]byte, error) {
 	return marshaledString, nil
 }
 
+// UnmarshalJSON parses json string field as BlockData
+func (data *BlockData) UnmarshalJSON(jsonData []byte) error {
+	var dataString string
+	if err := json.Unmarshal(jsonData, &dataString); err != nil {
+		return err
+	}
+	*data = BlockData(dataString)
+	return nil
+}
+
 func (block Block) String() string {
 	return fmt.Sprintf(
 		"Block -\n\tTimestamp : %s\n\tLastHash  : %s\n\tHash      : %s\n\tData      : %s\n",
