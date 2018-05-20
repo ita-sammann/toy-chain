@@ -16,6 +16,14 @@ func (hash BlockHash) MarshalBinary() []byte {
 	return []byte(hash)
 }
 
+// Eq checks equality of 2 hashes
+func (hash BlockHash) Eq(other BlockHash) bool {
+	if bytes.Equal(hash, other) {
+		return true
+	}
+	return false
+}
+
 func (hash BlockHash) String() string {
 	return hex.EncodeToString(hash)
 }

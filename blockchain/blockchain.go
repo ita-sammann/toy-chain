@@ -1,6 +1,9 @@
 package blockchain
 
-import "bytes"
+import (
+	"bytes"
+	"github.com/ita-sammann/toy-chain"
+)
 
 // Blockchain is blockchain
 type Blockchain struct {
@@ -14,24 +17,49 @@ func NewBlockchain() Blockchain {
 	}
 }
 
+// Len returns length of blockchain
+func (bc Blockchain) Len() int {
+	return len(bc.chain)
+}
+
+// LastBlock returns last block of chain
+func (bc Blockchain) LastBlock() Block {
+	return bc.chain[bc.Len()-1]
+}
+
 // AddBlock adds new block to blockchain
-func (blockchain *Blockchain) AddBlock(data BlockData) Block {
-	block := MineBlock(blockchain.chain[len(blockchain.chain)-1], data)
-	blockchain.chain = append(blockchain.chain, block)
+func (bc *Blockchain) AddBlock(data BlockData) Block {
+	block := MineBlock(bc.LastBlock(), data)
+	bc.chain = append(bc.chain, block)
 	return block
 }
 
-func (blockchain Blockchain) isValid() bool {
-	if blockchain.chain[0].String() != Genesis().String() {
+// IsValid checks validity of current blockchain
+func (bc Blockchain) IsValid() bool {
+	if bc.chain[0].String() != Genesis().String() {
 		return false
 	}
 
-	for i, block := range blockchain.chain[1:] {
-		lastBlock := blockchain.chain[i-1]
+	for i := 1; i < bc.Len(); i++ {
+		block := bc.chain[i]
+		lastBlock := bc.chain[i-1]
 		if !bytes.Equal(block.LastHash, lastBlock.Hash) || !block.checkHash() {
 			return false
 		}
 	}
 
 	return true
+}
+
+// ReplaceChain replaces current blockchain with new one if it's valid
+func (bc *Blockchain) ReplaceChain(newChain Blockchain) error {
+	if newChain.Len() <= bc.Len() {
+		return toy_chain.ErrChainReplaceTooShort
+	}
+	if !newChain.IsValid() {
+		return toy_chain.ErrChainReplaceInvalid
+	}
+
+	bc.chain = newChain.chain
+	return nil
 }
