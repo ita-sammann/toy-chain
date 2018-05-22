@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"testing"
+
 	"github.com/ita-sammann/toy-chain"
 )
 

@@ -9,7 +9,7 @@ import (
 )
 
 var HTTPServer struct {
-	chain blockchain.Blockchain
+	chain *blockchain.Blockchain
 }
 
 func blocksListHandler(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +48,7 @@ func mineBlockHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // StartHTTPServer starts http server
-func StartHTTPServer(chain blockchain.Blockchain, addr string) {
+func StartHTTPServer(chain *blockchain.Blockchain, addr string) {
 	if addr == "" {
 		addr = ":1138"
 	}

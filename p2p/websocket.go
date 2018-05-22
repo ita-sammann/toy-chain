@@ -10,8 +10,20 @@ import (
 	"github.com/ita-sammann/toy-chain/blockchain"
 )
 
-var incomingConnPool = make([]*websocket.Conn, 128)
-var outgoingConnPool = make([]*websocket.Conn, 128)
+type Conn struct {
+	conn       *websocket.Conn
+	isListened bool
+}
+
+var connPool = make([]*Conn, 0, 128)
+var ConnChan = make(chan *Conn, 16)
+
+func addConnection(wsConn *websocket.Conn, chain *blockchain.Blockchain) {
+	conn := &Conn{wsConn, false}
+	connPool = append(connPool, conn)
+	ConnChan <- conn
+	SendChain(*conn, chain)
+}
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
@@ -21,7 +33,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func wsHandler(w http.ResponseWriter, r *http.Request) {
+func wsHandler(w http.ResponseWriter, r *http.Request, chain *blockchain.Blockchain) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -29,54 +41,39 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Println("WS server: Accepted connection from", conn.RemoteAddr())
-	incomingConnPool = append(incomingConnPool, conn)
-
-	for {
-		messageType, p, err := conn.ReadMessage()
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		log.Printf("WS server: got message from %s: %s", conn.RemoteAddr(), string(p))
-		if err := conn.WriteMessage(messageType, p); err != nil {
-			log.Println(err)
-			return
-		}
-	}
+	addConnection(conn, chain)
 
 	//for {
-	//	messageType, r, err := conn.NextReader()
+	//	messageType, p, err := conn.ReadMessage()
 	//	if err != nil {
+	//		log.Println(err)
 	//		return
 	//	}
-	//	log.Printf("WS server: got message from %s: %s", conn.RemoteAddr(), )
-	//	w, err := conn.NextWriter(messageType)
-	//	if err != nil {
-	//		panic(err)
-	//	}
-	//	if _, err := io.Copy(w, r); err != nil {
-	//		panic(err)
-	//	}
-	//	if err := w.Close(); err != nil {
-	//		panic(err)
+	//	log.Printf("WS server: got message from %s, type %d: %s", conn.RemoteAddr(), messageType, string(p))
+	//	if err := conn.WriteMessage(messageType, p); err != nil {
+	//		log.Println(err)
+	//		return
 	//	}
 	//}
 }
 
 // StartWSServer starts http server
-func StartWSServer(chain blockchain.Blockchain, addr string) {
+func StartWSServer(chain *blockchain.Blockchain, addr string) {
 	if addr == "" {
 		addr = ":11380"
 	}
 
-	http.HandleFunc("/", wsHandler)
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { wsHandler(w, r, chain) })
 
 	log.Println("Listening WS on", addr)
 	http.ListenAndServe(addr, nil)
 }
 
-func StartWSClient(chain blockchain.Blockchain, addrs []string) {
+func StartWSClient(chain *blockchain.Blockchain, addrs []string) {
 	for _, addr := range addrs {
+		if addr == "" {
+			continue
+		}
 		u := url.URL{Scheme: "ws", Host: addr, Path: "/"}
 		log.Printf("WS client: connecting to %s", u.String())
 
@@ -85,6 +82,6 @@ func StartWSClient(chain blockchain.Blockchain, addrs []string) {
 			log.Fatal("dial:", err)
 		}
 
-		outgoingConnPool = append(outgoingConnPool, c)
+		addConnection(c, chain)
 	}
 }

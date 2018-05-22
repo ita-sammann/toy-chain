@@ -1,12 +1,12 @@
 package blockchain
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"time"
-	"bytes"
-	"encoding/json"
 )
 
 // Block is one block from blockchain
@@ -23,7 +23,6 @@ type BlockHash []byte
 // BlockData is just byte slice for now
 type BlockData []byte
 
-
 // MarshalBinary Represents BlockHash as byte slice
 func (hash BlockHash) MarshalBinary() []byte {
 	return []byte(hash)
@@ -39,6 +38,21 @@ func (hash BlockHash) MarshalJSON() ([]byte, error) {
 	return marshaledString, nil
 }
 
+// UnmarshalJSON decodes BlockHash from hex digits
+func (hash *BlockHash) UnmarshalJSON(jsonHash []byte) error {
+	var hashString string
+	if err := json.Unmarshal(jsonHash, &hashString); err != nil {
+		return err
+	}
+
+	hashBytes, err := NewBlockHashFromString(hashString)
+	if err != nil {
+		return err
+	}
+	*hash = hashBytes
+	return nil
+}
+
 // Eq checks equality of 2 hashes
 func (hash BlockHash) Eq(other BlockHash) bool {
 	if bytes.Equal(hash, other) {
@@ -51,6 +65,13 @@ func (hash BlockHash) String() string {
 	return hex.EncodeToString(hash)
 }
 
+func NewBlockHashFromString(str string) (BlockHash, error) {
+	hash, err := hex.DecodeString(str)
+	if err != nil {
+		return nil, err
+	}
+	return hash, nil
+}
 
 // MarshalBinary represents BlockData as byte slice
 func (data BlockData) MarshalBinary() []byte {
@@ -91,7 +112,6 @@ func (block Block) checkHash() bool {
 	return bytes.Equal(block.Hash, Hash(block.Timestamp, block.LastHash, block.Data))
 }
 
-
 // Genesis return genesis block
 func Genesis() Block {
 	timestamp := time.Unix(1526774400, 0)
@@ -131,7 +151,7 @@ func Hash(timestamp time.Time, lastHash BlockHash, data BlockData) BlockHash {
 	if err != nil {
 		panic(err)
 	}
-	dataToHash := make([]byte, 64)
+	dataToHash := make([]byte, 0, 64)
 	dataToHash = append(dataToHash, binTimestamp...)
 	dataToHash = append(dataToHash, lastHash.MarshalBinary()...)
 	dataToHash = append(dataToHash, data.MarshalBinary()...)

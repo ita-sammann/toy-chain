@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"bytes"
+
 	"github.com/ita-sammann/toy-chain"
 )
 
@@ -14,6 +15,13 @@ type Blockchain struct {
 func NewBlockchain() Blockchain {
 	return Blockchain{
 		[]Block{Genesis()},
+	}
+}
+
+//NewBlockchainBlocks creates new blockchain from blocks slice
+func NewBlockchainBlocks(chain []Block) Blockchain {
+	return Blockchain{
+		chain,
 	}
 }
 

@@ -32,7 +32,7 @@ func main() {
 
 	chain := blockchain.NewBlockchain()
 
-	startNetworking(chain, httpPort, wsPort, wsPeers)
+	startNetworking(&chain, httpPort, wsPort, wsPeers)
 
 	go func() {
 		for {
@@ -64,10 +64,12 @@ func main() {
 	os.Exit(code)
 }
 
-func startNetworking(chain blockchain.Blockchain, httpPort, wsPort, wsPeers string) {
+func startNetworking(chain *blockchain.Blockchain, httpPort, wsPort, wsPeers string) {
 	go server.StartHTTPServer(chain, "0.0.0.0:"+httpPort)
 	go p2p.StartWSServer(chain, "0.0.0.0:"+wsPort)
 
 	peerAddrs := strings.Split(wsPeers, ",")
 	go p2p.StartWSClient(chain, peerAddrs)
+
+	go p2p.StartExchange(chain)
 }
