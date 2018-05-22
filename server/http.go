@@ -1,17 +1,20 @@
 package server
 
 import (
-	"net/http"
-	"log"
-	"github.com/ita-sammann/toy-chain/blockchain"
 	"encoding/json"
+	"log"
+	"net/http"
+
+	"github.com/ita-sammann/toy-chain/blockchain"
 )
 
-var Chain blockchain.Blockchain
+var HTTPServer struct {
+	chain blockchain.Blockchain
+}
 
 func blocksListHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	blocks, err := json.Marshal(Chain.ListBlocks())
+	blocks, err := json.Marshal(HTTPServer.chain.ListBlocks())
 	if err != nil {
 		log.Println(err)
 	}
@@ -39,21 +42,22 @@ func mineBlockHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 	}
 
-	Chain.AddBlock(reqBody.Data)
+	HTTPServer.chain.AddBlock(reqBody.Data)
 
 	http.Redirect(w, r, "/blocks/", 302)
 }
 
-func StartServer(addr string) {
+// StartHTTPServer starts http server
+func StartHTTPServer(chain blockchain.Blockchain, addr string) {
 	if addr == "" {
 		addr = ":1138"
 	}
 
-	Chain = blockchain.NewBlockchain()
+	HTTPServer.chain = chain
 
 	http.HandleFunc("/blocks/", blocksListHandler)
 	http.HandleFunc("/mine/", mineBlockHandler)
 
-	log.Println("Listening on", addr)
+	log.Println("Listening HTTP on", addr)
 	http.ListenAndServe(addr, nil)
 }
