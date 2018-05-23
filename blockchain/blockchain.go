@@ -54,6 +54,11 @@ func (bc Blockchain) IsValid() bool {
 		if !bytes.Equal(block.LastHash, lastBlock.Hash) || !block.checkHash() {
 			return false
 		}
+		for i := 0; uint8(i) < block.Difficulty; i++ {
+			if block.Hash[i] != 0 {
+				return false
+			}
+		}
 	}
 
 	return true

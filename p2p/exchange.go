@@ -76,7 +76,7 @@ func listenConnection(conn Conn, chain *blockchain.Blockchain) {
 
 		var payload ExchangePayload
 		if err := json.Unmarshal(p, &payload); err != nil {
-			log.Println(err)
+			log.Println("failed to parse payload", err)
 			if err := conn.conn.WriteMessage(messageType, ReplyMsg("rejected: failed to parse payload")); err != nil {
 				log.Println(err)
 				continue
@@ -85,11 +85,13 @@ func listenConnection(conn Conn, chain *blockchain.Blockchain) {
 
 		if payload.Type == MsgTypeBlockchain {
 			if err := chain.ReplaceChain(blockchain.NewBlockchainBlocks(payload.Blocks)); err != nil {
+				log.Println("rejected:", err)
 				if err := conn.conn.WriteMessage(messageType, ReplyMsg("rejected: "+err.Error())); err != nil {
 					log.Println(err)
 					continue
 				}
 			} else {
+				log.Println("accepted")
 				if err := conn.conn.WriteMessage(messageType, ReplyMsg("accepted")); err != nil {
 					log.Println(err)
 					continue

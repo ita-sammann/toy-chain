@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/ita-sammann/toy-chain/blockchain"
+	"github.com/ita-sammann/toy-chain/p2p"
 )
 
 var HTTPServer struct {
@@ -43,6 +44,8 @@ func mineBlockHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	HTTPServer.chain.AddBlock(reqBody.Data)
+
+	p2p.BroadcastChain(HTTPServer.chain)
 
 	http.Redirect(w, r, "/blocks/", 302)
 }

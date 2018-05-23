@@ -16,9 +16,9 @@ import (
 )
 
 func main() {
-	var httpPort, wsPort, wsPeers string
-	flag.StringVar(&httpPort, "http-port", "1138", "HTTP port")
-	flag.StringVar(&wsPort, "ws-port", "11380", "WebSocket server port")
+	var httpAddr, wsAddr, wsPeers string
+	flag.StringVar(&httpAddr, "http-addr", "127.0.0.1:1138", "HTTP address to listen")
+	flag.StringVar(&wsAddr, "ws-addr", "127.0.0.1:11380", "WebSocket address to listen")
 	flag.StringVar(&wsPeers, "ws-peers", "", "WebSocket peers")
 	flag.Parse()
 
@@ -32,7 +32,7 @@ func main() {
 
 	chain := blockchain.NewBlockchain()
 
-	startNetworking(&chain, httpPort, wsPort, wsPeers)
+	startNetworking(&chain, httpAddr, wsAddr, wsPeers)
 
 	go func() {
 		for {
@@ -64,9 +64,9 @@ func main() {
 	os.Exit(code)
 }
 
-func startNetworking(chain *blockchain.Blockchain, httpPort, wsPort, wsPeers string) {
-	go server.StartHTTPServer(chain, "0.0.0.0:"+httpPort)
-	go p2p.StartWSServer(chain, "0.0.0.0:"+wsPort)
+func startNetworking(chain *blockchain.Blockchain, httpAddr, wsAddr, wsPeers string) {
+	go server.StartHTTPServer(chain, httpAddr)
+	go p2p.StartWSServer(chain, wsAddr)
 
 	peerAddrs := strings.Split(wsPeers, ",")
 	go p2p.StartWSClient(chain, peerAddrs)
