@@ -3,7 +3,6 @@ package p2p
 import (
 	"log"
 	"net/http"
-
 	"net/url"
 
 	"github.com/gorilla/websocket"
@@ -11,17 +10,19 @@ import (
 )
 
 type Conn struct {
-	conn       *websocket.Conn
-	isListened bool
+	id     uint
+	conn   *websocket.Conn
+	isDead bool
 }
 
-var connPool = make([]*Conn, 0, 128)
-var ConnChan = make(chan *Conn, 16)
+var connId uint = 0
+var connPool = make(map[uint]*Conn)
 
 func addConnection(wsConn *websocket.Conn, chain *blockchain.Blockchain) {
-	conn := &Conn{wsConn, false}
-	connPool = append(connPool, conn)
-	ConnChan <- conn
+	connId++
+	conn := &Conn{connId, wsConn, false}
+	connPool[conn.id] = conn
+	go listenConnection(conn, chain)
 	SendChain(*conn, chain)
 }
 
@@ -70,5 +71,12 @@ func StartWSClient(chain *blockchain.Blockchain, addrs []string) {
 		}
 
 		addConnection(c, chain)
+	}
+}
+
+func CloseConnections() {
+	for _, conn := range connPool {
+		conn.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseGoingAway, "bye"))
+		delete(connPool, conn.id)
 	}
 }

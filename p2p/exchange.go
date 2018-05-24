@@ -5,6 +5,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/ita-sammann/toy-chain/blockchain"
 )
 
@@ -50,19 +51,18 @@ func ReplyMsg(msg string) []byte {
 	return payload
 }
 
-func StartExchange(chain *blockchain.Blockchain) {
-	for conn := range ConnChan {
-		go listenConnection(*conn, chain)
-	}
-}
-
-func listenConnection(conn Conn, chain *blockchain.Blockchain) {
-	conn.isListened = true
+func listenConnection(conn *Conn, chain *blockchain.Blockchain) {
 	for {
 		messageType, p, err := conn.conn.ReadMessage()
 		if err != nil {
-			log.Println(err)
-			continue
+			if websocket.IsCloseError(err, websocket.CloseGoingAway) {
+				log.Printf("connection %d closed", conn.id)
+			} else {
+				log.Println(err)
+			}
+			conn.conn.Close()
+			delete(connPool, conn.id)
+			break
 		}
 
 		var payload ExchangePayload

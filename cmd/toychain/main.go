@@ -6,9 +6,8 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"syscall"
-
 	"strings"
+	"syscall"
 
 	"github.com/ita-sammann/toy-chain/api"
 	"github.com/ita-sammann/toy-chain/blockchain"
@@ -61,6 +60,9 @@ func main() {
 		}
 	}()
 	code := <-exitChan
+
+	stopNetworking()
+
 	os.Exit(code)
 }
 
@@ -70,6 +72,8 @@ func startNetworking(chain *blockchain.Blockchain, httpAddr, wsAddr, wsPeers str
 
 	peerAddrs := strings.Split(wsPeers, ",")
 	go p2p.StartWSClient(chain, peerAddrs)
+}
 
-	go p2p.StartExchange(chain)
+func stopNetworking() {
+	p2p.CloseConnections()
 }
