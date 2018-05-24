@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 )
 
@@ -173,17 +172,6 @@ func MineBlock(lastBlock Block, data BlockData) Block {
 	}
 }
 
-func AdjustDifficulty(lastBlock Block, timestamp time.Time) uint8 {
-	difficulty := lastBlock.Difficulty
-	timeDiff := timestamp.Sub(lastBlock.Timestamp)
-	if timeDiff > (MineRate+MineRateError) && difficulty > 0 {
-		difficulty--
-	} else if timeDiff < (MineRate - MineRateError) {
-		difficulty++
-	}
-	return difficulty
-}
-
 // MineHash finds nonce that produces correct hash
 func MineHash(lastBlock Block, data BlockData) (time.Time, uint64, BlockHash, uint8) {
 	timestamp := time.Now()
@@ -201,7 +189,6 @@ ToMine:
 				continue ToMine
 			}
 		}
-		log.Println("cur diff:", difficulty)
 		return timestamp, nonce, blockhash, difficulty
 	}
 }
@@ -231,4 +218,15 @@ func Hash(timestamp time.Time, lastHash BlockHash, data BlockData, nonce uint64,
 
 	blockhash := sha256.Sum256(dataToHash)
 	return blockhash[:]
+}
+
+func AdjustDifficulty(lastBlock Block, timestamp time.Time) uint8 {
+	difficulty := lastBlock.Difficulty
+	timeDiff := timestamp.Sub(lastBlock.Timestamp)
+	if timeDiff > (MineRate+MineRateError) && difficulty > 0 {
+		difficulty--
+	} else if timeDiff < (MineRate - MineRateError) {
+		difficulty++
+	}
+	return difficulty
 }

@@ -10,9 +10,9 @@ import (
 
 	"strings"
 
+	"github.com/ita-sammann/toy-chain/api"
 	"github.com/ita-sammann/toy-chain/blockchain"
 	"github.com/ita-sammann/toy-chain/p2p"
-	"github.com/ita-sammann/toy-chain/server"
 )
 
 func main() {
@@ -28,7 +28,7 @@ func main() {
 		syscall.SIGINT,
 		syscall.SIGTERM,
 		syscall.SIGQUIT)
-	exit_chan := make(chan int)
+	exitChan := make(chan int, 1)
 
 	chain := blockchain.NewBlockchain()
 
@@ -40,32 +40,32 @@ func main() {
 			switch s {
 			case syscall.SIGHUP:
 				log.Println("Hungup")
-				exit_chan <- 0
+				exitChan <- 0
 
 			case syscall.SIGINT:
 				log.Println("Interrupted")
-				exit_chan <- 0
+				exitChan <- 0
 
 			case syscall.SIGTERM:
 				fmt.Println("Force stop")
-				exit_chan <- 0
+				exitChan <- 0
 
 			case syscall.SIGQUIT:
 				fmt.Println("Stop and core dump")
-				exit_chan <- 0
+				exitChan <- 0
 
 			default:
 				fmt.Println("Unknown signal.")
-				exit_chan <- 1
+				exitChan <- 1
 			}
 		}
 	}()
-	code := <-exit_chan
+	code := <-exitChan
 	os.Exit(code)
 }
 
 func startNetworking(chain *blockchain.Blockchain, httpAddr, wsAddr, wsPeers string) {
-	go server.StartHTTPServer(chain, httpAddr)
+	go api.StartHTTPServer(chain, httpAddr)
 	go p2p.StartWSServer(chain, wsAddr)
 
 	peerAddrs := strings.Split(wsPeers, ",")

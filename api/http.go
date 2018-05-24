@@ -1,4 +1,4 @@
-package server
+package api
 
 import (
 	"encoding/json"
@@ -9,13 +9,9 @@ import (
 	"github.com/ita-sammann/toy-chain/p2p"
 )
 
-var HTTPServer struct {
-	chain *blockchain.Blockchain
-}
-
-func blocksListHandler(w http.ResponseWriter, r *http.Request) {
+func blocksListHandler(w http.ResponseWriter, r *http.Request, chain *blockchain.Blockchain) {
 	w.Header().Set("Content-Type", "application/json")
-	blocks, err := json.Marshal(HTTPServer.chain.ListBlocks())
+	blocks, err := json.Marshal(chain.ListBlocks())
 	if err != nil {
 		log.Println(err)
 	}
@@ -25,7 +21,7 @@ func blocksListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func mineBlockHandler(w http.ResponseWriter, r *http.Request) {
+func mineBlockHandler(w http.ResponseWriter, r *http.Request, chain *blockchain.Blockchain) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte("Only POST method is allowed"))
@@ -43,9 +39,9 @@ func mineBlockHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(err.Error()))
 	}
 
-	HTTPServer.chain.AddBlock(reqBody.Data)
+	chain.AddBlock(reqBody.Data)
 
-	p2p.BroadcastChain(HTTPServer.chain)
+	p2p.BroadcastChain(chain)
 
 	http.Redirect(w, r, "/blocks/", 302)
 }
@@ -53,13 +49,11 @@ func mineBlockHandler(w http.ResponseWriter, r *http.Request) {
 // StartHTTPServer starts http server
 func StartHTTPServer(chain *blockchain.Blockchain, addr string) {
 	if addr == "" {
-		addr = ":1138"
+		addr = "127.0.0.1:1138"
 	}
 
-	HTTPServer.chain = chain
-
-	http.HandleFunc("/blocks/", blocksListHandler)
-	http.HandleFunc("/mine/", mineBlockHandler)
+	http.HandleFunc("/blocks/", func(w http.ResponseWriter, r *http.Request) { blocksListHandler(w, r, chain) })
+	http.HandleFunc("/mine/", func(w http.ResponseWriter, r *http.Request) { mineBlockHandler(w, r, chain) })
 
 	log.Println("Listening HTTP on", addr)
 	http.ListenAndServe(addr, nil)

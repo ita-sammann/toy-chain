@@ -25,15 +25,7 @@ func addConnection(wsConn *websocket.Conn, chain *blockchain.Blockchain) {
 	SendChain(*conn, chain)
 }
 
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
-}
-
-func wsHandler(w http.ResponseWriter, r *http.Request, chain *blockchain.Blockchain) {
+func wsHandler(w http.ResponseWriter, r *http.Request, upgrader websocket.Upgrader, chain *blockchain.Blockchain) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -42,28 +34,23 @@ func wsHandler(w http.ResponseWriter, r *http.Request, chain *blockchain.Blockch
 
 	log.Println("WS server: Accepted connection from", conn.RemoteAddr())
 	addConnection(conn, chain)
-
-	//for {
-	//	messageType, p, err := conn.ReadMessage()
-	//	if err != nil {
-	//		log.Println(err)
-	//		return
-	//	}
-	//	log.Printf("WS server: got message from %s, type %d: %s", conn.RemoteAddr(), messageType, string(p))
-	//	if err := conn.WriteMessage(messageType, p); err != nil {
-	//		log.Println(err)
-	//		return
-	//	}
-	//}
 }
 
 // StartWSServer starts http server
 func StartWSServer(chain *blockchain.Blockchain, addr string) {
 	if addr == "" {
-		addr = ":11380"
+		addr = "127.0.0.1:11380"
 	}
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { wsHandler(w, r, chain) })
+	var upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+	}
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { wsHandler(w, r, upgrader, chain) })
 
 	log.Println("Listening WS on", addr)
 	http.ListenAndServe(addr, nil)

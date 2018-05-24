@@ -56,15 +56,6 @@ func StartExchange(chain *blockchain.Blockchain) {
 	}
 }
 
-func checkPool(chain *blockchain.Blockchain) {
-	for _, conn := range connPool {
-		if conn.isListened {
-			continue
-		}
-		go listenConnection(*conn, chain)
-	}
-}
-
 func listenConnection(conn Conn, chain *blockchain.Blockchain) {
 	conn.isListened = true
 	for {
