@@ -61,6 +61,6 @@ var _ = Describe("Block", func() {
 		Expect(newBlock.Hash).To(Equal(
 			Hash(newBlock.Timestamp, newBlock.LastHash, newBlock.Data, newBlock.Nonce, newBlock.Difficulty),
 		))
-		Expect(newBlock.Data).To(Equal([]byte("test_data")))
+		Expect(string(newBlock.Data)).To(Equal("test_data"))
 	})
 })
