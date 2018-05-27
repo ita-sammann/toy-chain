@@ -32,12 +32,12 @@ type BlockHash []byte
 // BlockData is just byte slice for now
 type BlockData []byte
 
-// MarshalBinary Represents BlockHash as byte slice
-func (hash BlockHash) MarshalBinary() []byte {
+// MarshalBin Represents BlockHash as byte slice
+func (hash BlockHash) MarshalBin() []byte {
 	return []byte(hash)
 }
 
-// MarshalJSON encodes BlockHash as hex digits
+// MarshalJSON encodes BlockHash as hex digits w
 func (hash BlockHash) MarshalJSON() ([]byte, error) {
 	hashString := hash.String()
 	marshaledString, err := json.Marshal(hashString)
@@ -82,8 +82,8 @@ func NewBlockHashFromString(str string) (BlockHash, error) {
 	return hash, nil
 }
 
-// MarshalBinary represents BlockData as byte slice
-func (data BlockData) MarshalBinary() []byte {
+// MarshalBin represents BlockData as byte slice
+func (data BlockData) MarshalBin() []byte {
 	return []byte(data)
 }
 
@@ -155,7 +155,7 @@ func Genesis() Block {
 
 // MineBlock generates new block based on last block of chain
 func MineBlock(lastBlock Block, data BlockData) Block {
-	timestamp := time.Now()
+	timestamp := time.Now().UTC()
 	lastHash := lastBlock.Hash
 	difficulty := lastBlock.Difficulty
 
@@ -174,12 +174,12 @@ func MineBlock(lastBlock Block, data BlockData) Block {
 
 // MineHash finds nonce that produces correct hash
 func MineHash(lastBlock Block, data BlockData) (time.Time, uint64, BlockHash, uint8) {
-	timestamp := time.Now()
+	timestamp := time.Now().UTC()
 	nonce := uint64(0)
 	var blockhash BlockHash
 ToMine:
 	for {
-		timestamp = time.Now()
+		timestamp = time.Now().UTC()
 		difficulty := AdjustDifficulty(lastBlock, timestamp)
 		blockhash = Hash(timestamp, lastBlock.Hash, data, nonce, difficulty)
 
@@ -201,8 +201,8 @@ func Hash(timestamp time.Time, lastHash BlockHash, data BlockData, nonce uint64,
 	}
 	dataToHash := make([]byte, 0, 1024)
 	dataToHash = append(dataToHash, binTimestamp...)
-	dataToHash = append(dataToHash, lastHash.MarshalBinary()...)
-	dataToHash = append(dataToHash, data.MarshalBinary()...)
+	dataToHash = append(dataToHash, lastHash.MarshalBin()...)
+	dataToHash = append(dataToHash, data.MarshalBin()...)
 	dataToHash = append(dataToHash, difficulty)
 
 	// Adding 8 bytes of placeholder for nonce

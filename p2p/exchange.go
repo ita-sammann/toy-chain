@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/ita-sammann/toy-chain/blockchain"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -26,7 +27,7 @@ func NewChainPayload(chain *blockchain.Blockchain) ExchangePayload {
 	return ExchangePayload{
 		MsgTypeBlockchain,
 		127,
-		time.Now(),
+		time.Now().UTC(),
 		chain.ListBlocks(),
 		"",
 	}
@@ -36,7 +37,7 @@ func NewMsgPayload(msg string) ExchangePayload {
 	return ExchangePayload{
 		MsgTypeMessage,
 		127,
-		time.Now(),
+		time.Now().UTC(),
 		nil,
 		msg,
 	}
@@ -46,7 +47,7 @@ func ReplyMsg(msg string) []byte {
 	payload, err := json.Marshal(NewMsgPayload(msg))
 	if err != nil {
 		log.Println(err)
-		return []byte(err.Error())
+		return []byte(errors.WithMessage(err, "malformed payload").Error())
 	}
 	return payload
 }
@@ -58,7 +59,7 @@ func listenConnection(conn *Conn, chain *blockchain.Blockchain) {
 			if websocket.IsCloseError(err, websocket.CloseGoingAway) {
 				log.Printf("connection %d closed", conn.id)
 			} else {
-				log.Println(err)
+				log.Println(errors.Wrap(err, "error reading from connection"))
 			}
 			conn.conn.Close()
 			delete(connPool, conn.id)
@@ -69,14 +70,14 @@ func listenConnection(conn *Conn, chain *blockchain.Blockchain) {
 		if err := json.Unmarshal(p, &payload); err != nil {
 			log.Println("failed to parse payload", err)
 			if err := conn.conn.WriteMessage(messageType, ReplyMsg("rejected: failed to parse payload")); err != nil {
-				log.Println(err)
+				log.Println(errors.Wrap(err, "bad payload"))
 				continue
 			}
 		}
 
 		if payload.Type == MsgTypeBlockchain {
 			if err := chain.ReplaceChain(blockchain.NewBlockchainBlocks(payload.Blocks)); err != nil {
-				log.Println("rejected:", err)
+				log.Println(errors.WithMessage(err, "rejected"))
 				if err := conn.conn.WriteMessage(messageType, ReplyMsg("rejected: "+err.Error())); err != nil {
 					log.Println(err)
 					continue

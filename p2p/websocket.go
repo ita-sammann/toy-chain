@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/ita-sammann/toy-chain/blockchain"
+	"github.com/pkg/errors"
 )
 
 type Conn struct {
@@ -29,7 +30,7 @@ func addConnection(wsConn *websocket.Conn, chain *blockchain.Blockchain) {
 func wsHandler(w http.ResponseWriter, r *http.Request, upgrader websocket.Upgrader, chain *blockchain.Blockchain) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Println(errors.Wrap(err, "failed to upgrade http connection"))
 		return
 	}
 
@@ -67,7 +68,7 @@ func StartWSClient(chain *blockchain.Blockchain, addrs []string) {
 
 		c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 		if err != nil {
-			log.Fatal("dial:", err)
+			log.Fatal(errors.Wrap(err, "failed to establish ws connection to peer"))
 		}
 
 		addConnection(c, chain)
