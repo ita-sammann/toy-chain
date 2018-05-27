@@ -1,102 +1,98 @@
 package blockchain
 
 import (
-	"testing"
-
 	"github.com/ita-sammann/toy-chain"
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestNewBlockchain(t *testing.T) {
-	bc := NewBlockchain()
-	if bc.chain[0].String() != Genesis().String() {
-		t.Error("Blockchain does not start with genesis block")
-	}
-}
+var _ = Describe("Blockchain", func() {
+	var (
+		bc Blockchain
+	)
 
-func TestBlockchain_AddBlock(t *testing.T) {
-	bc := NewBlockchain()
-	bc.AddBlock([]byte("TestBlockchain_AddBlock_some_test_data"))
-	if string(bc.LastBlock().Data) != "TestBlockchain_AddBlock_some_test_data" {
-		t.Error("Data mismatching in last block")
-	}
-}
+	BeforeEach(func() {
+		bc = NewBlockchain()
+		bc.AddBlock([]byte("test_data_1"))
+		bc.AddBlock([]byte("test_data_2"))
+		bc.AddBlock([]byte("test_data_3"))
+	})
 
-func TestBlockchain_IsValid(t *testing.T) {
-	bc := NewBlockchain()
-	bc.AddBlock([]byte("TestBlockchain_IsValid_data_1"))
-	bc.AddBlock([]byte("TestBlockchain_IsValid_data_2"))
+	It("starts with genesis block", func() {
+		Expect(bc.ListBlocks()[0].String()).To(Equal(Genesis().String()))
+	})
 
-	if !bc.IsValid() {
-		t.Error("Failed to validate valid chain")
-	}
+	It("has correct data in last block", func() {
+		Expect(string(bc.ListBlocks()[3].Data)).To(Equal("test_data_3"))
+	})
 
-	bc.chain[0].Data = []byte("Corrupt data")
+	It("is valid", func() {
+		Expect(bc.IsValid()).To(BeTrue())
+	})
 
-	if bc.IsValid() {
-		t.Error("Successfully validated chain with corrupt genesis block")
-	}
+	It("is invalid with corrupt genesis block", func() {
+		bc.chain[0].Data = []byte("Corrupt data")
+		Expect(bc.IsValid()).To(BeFalse())
+	})
 
-	bc = NewBlockchain()
-	bc.AddBlock([]byte("TestBlockchain_IsValid_data_1"))
-	bc.AddBlock([]byte("TestBlockchain_IsValid_data_2"))
-	bc.AddBlock([]byte("TestBlockchain_IsValid_data_3"))
-	bc.chain[2].Data = []byte("gimme all your money")
+	It("is invalid with corrupt intermediate block", func() {
+		bc.chain[1].Data = []byte("Corrupt data")
+		Expect(bc.IsValid()).To(BeFalse())
+	})
 
-	if bc.IsValid() {
-		t.Error("Successfully validated chain with corrupt intermediate block")
-	}
+	It("is invalid with corrupt last block", func() {
+		bc.chain[bc.Len()-1].Data = []byte("Corrupt data")
+		Expect(bc.IsValid()).To(BeFalse())
+	})
 
-	bc = NewBlockchain()
-	bc.AddBlock([]byte("TestBlockchain_IsValid_data_1"))
-	bc.AddBlock([]byte("TestBlockchain_IsValid_data_2"))
-	bc.AddBlock([]byte("TestBlockchain_IsValid_data_3"))
-	bc.chain[bc.Len()-1].Data = []byte("bad data")
+	Describe("Replacing with another chain", func() {
+		BeforeEach(func() {
+			bc = NewBlockchain()
+			bc.AddBlock([]byte("data_1"))
+			bc.AddBlock([]byte("data_2"))
+		})
 
-	if bc.IsValid() {
-		t.Error("Successfully validated chain with corrupt last block")
-	}
-}
+		It("should be replaced with valid and longer chain", func() {
+			bc2 := NewBlockchain()
+			bc2.AddBlock([]byte("foo 1"))
+			bc2.AddBlock([]byte("foo 2"))
+			bc2.AddBlock([]byte("bar 3"))
 
-func TestBlockchain_ReplaceChain(t *testing.T) {
-	bc := NewBlockchain()
-	bc.AddBlock([]byte("foo 1"))
-	bc.AddBlock([]byte("foo 2"))
+			err := bc.ReplaceChain(bc2)
 
-	bc2 := NewBlockchain()
-	bc2.AddBlock([]byte("foo 1"))
-	bc2.AddBlock([]byte("foo 2"))
-	bc2.AddBlock([]byte("bar 3"))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(bc.LastBlock().Hash).To(Equal(bc2.LastBlock().Hash))
+		})
 
-	err := bc.ReplaceChain(bc2)
+		It("should not be replaced with shorter one", func() {
+			bc2 := NewBlockchain()
+			bc2.AddBlock([]byte("baz 1"))
+			bc2.AddBlock([]byte("baz 2"))
 
-	if err != nil || !bc.LastBlock().Hash.Eq(bc2.LastBlock().Hash) {
-		t.Error("Failed to replace with valid chain")
-	}
+			err := bc.ReplaceChain(bc2)
 
-	bc3 := NewBlockchain()
-	bc3.AddBlock([]byte("baz 1"))
-	bc3.AddBlock([]byte("baz 2"))
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(toy_chain.ErrChainReplaceTooShort))
+			Expect(bc.LastBlock().Hash).NotTo(Equal(bc2.LastBlock().Hash))
+		})
 
-	err = bc.ReplaceChain(bc3)
+		It("should not be replaced with corrupt one", func() {
+			bc2 := NewBlockchain()
+			bc2.AddBlock([]byte("foobar 1"))
+			bc2.AddBlock([]byte("foobar 2"))
+			bc2.AddBlock([]byte("foobar 3"))
+			bc2.AddBlock([]byte("foobar 4"))
+			bc2.AddBlock([]byte("foobar 5"))
+			bc2.AddBlock([]byte("foobar 6"))
+			bc2.AddBlock([]byte("foobar 7"))
+			bc2.AddBlock([]byte("foobar 8"))
+			bc2.chain[5].Data = []byte("corrupt data")
 
-	if err != toy_chain.ErrChainReplaceTooShort || bc.LastBlock().Hash.Eq(bc3.LastBlock().Hash) {
-		t.Error("Successfully replaced chain with shorter one")
-	}
+			err := bc.ReplaceChain(bc2)
 
-	bc4 := NewBlockchain()
-	bc4.AddBlock([]byte("foobar 1"))
-	bc4.AddBlock([]byte("foobar 2"))
-	bc4.AddBlock([]byte("foobar 3"))
-	bc4.AddBlock([]byte("foobar 4"))
-	bc4.AddBlock([]byte("foobar 5"))
-	bc4.AddBlock([]byte("foobar 6"))
-	bc4.AddBlock([]byte("foobar 7"))
-	bc4.AddBlock([]byte("foobar 8"))
-	bc4.chain[5].Data = []byte("corrupt data")
-
-	err = bc.ReplaceChain(bc4)
-
-	if err != toy_chain.ErrChainReplaceInvalid || bc.LastBlock().Hash.Eq(bc4.LastBlock().Hash) {
-		t.Error("Successfully replaced chain with corrupt one")
-	}
-}
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(Equal(toy_chain.ErrChainReplaceInvalid))
+			Expect(bc.LastBlock().Hash).NotTo(Equal(bc2.LastBlock().Hash))
+		})
+	})
+})
