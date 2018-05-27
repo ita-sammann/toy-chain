@@ -4,63 +4,59 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
-	"testing"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestNewTransaction(t *testing.T) {
-	testKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	recipientAddr := testKey.PublicKey
-	txAmount := uint64(50)
-	wallet := NewWallet()
+var _ = Describe("Transaction", func() {
+	var (
+		recipientAddr ecdsa.PublicKey
+		txAmount      uint64
+		wallet        Wallet
+		tx            *Transaction
+		err           error
+	)
 
-	tx, err := NewTransaction(wallet, recipientAddr, txAmount+wallet.Balance)
-	if err == nil || tx != nil {
-		t.Error("Managed to create TX with excessive amount")
-	}
+	BeforeEach(func() {
+		testKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		recipientAddr = testKey.PublicKey
+		txAmount = uint64(50)
+		wallet = NewWallet()
+		tx, err = NewTransaction(wallet, recipientAddr, txAmount)
+	})
 
-	tx, err = NewTransaction(wallet, recipientAddr, txAmount)
-	if err != nil {
-		t.Error("Failed to create correct TX")
-		return
-	}
+	It("fails to create with excessive amount", func() {
+		tx, err = NewTransaction(wallet, recipientAddr, txAmount+wallet.Balance)
 
-	for _, txo := range tx.Outputs {
-		if txo.address == recipientAddr {
-			if txo.amount != txAmount {
-				t.Errorf("Bad `change` TXO amount. Got: %d, expected: %d", txo.amount, wallet.Balance-txAmount)
+		Expect(tx).To(BeNil())
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("is successfully created with correct data", func() {
+		Expect(err).NotTo(HaveOccurred())
+		Expect(tx.Input.amount).To(Equal(wallet.Balance), "bad TXI amount")
+
+		for _, txo := range tx.Outputs {
+			if txo.address == recipientAddr {
+				Expect(txo.amount).To(Equal(txAmount), "bad `target` TXO amount")
+			} else if txo.address == wallet.PublicKey {
+				Expect(txo.amount).To(Equal(wallet.Balance-txAmount), "bad `change` TXO amount.")
+			} else {
+				Fail("unexpected TXO")
 			}
-		} else if txo.address == wallet.PublicKey {
-			if txo.amount != wallet.Balance-txAmount {
-				t.Errorf("Bad `change` TXO amount. Got: %d, expected: %d", txo.amount, wallet.Balance-txAmount)
-			}
-		} else {
-			t.Error("Unexpected TXO")
 		}
-	}
 
-	if tx.Input.amount != wallet.Balance {
-		t.Errorf("Bad TXI amount. Got: %d, expected: %d", tx.Input.amount, wallet.Balance)
-	}
-}
+	})
 
-func TestTransaction_VerifySignature(t *testing.T) {
-	testKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	recipientAddr := testKey.PublicKey
-	txAmount := uint64(50)
-	wallet := NewWallet()
+	It("validates correct TX", func() {
+		Expect(tx.VerifySignature(wallet.PublicKey)).To(BeTrue())
+	})
 
-	tx, err := NewTransaction(wallet, recipientAddr, txAmount)
-	if err != nil {
-		t.Error("Failed to create TX")
-		return
-	}
+	It("invalidates corrupt TX", func() {
+		tx.Outputs[0].amount = wallet.Balance
 
-	if !tx.VerifySignature(wallet.PublicKey) {
-		t.Error("Failed to validate correct TX")
-	}
+		Expect(tx.VerifySignature(wallet.PublicKey)).To(BeFalse())
+	})
 
-	tx.Outputs[0].amount = wallet.Balance
-	if tx.VerifySignature(wallet.PublicKey) {
-		t.Error("Validated corrupt TX")
-	}
-}
+})

@@ -2,56 +2,53 @@ package coin
 
 import (
 	"encoding/json"
-	"regexp"
-	"testing"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
-func TestNewWallet(t *testing.T) {
-	wallet := NewWallet()
+var _ = Describe("Wallet", func() {
+	var (
+		wallet Wallet
+	)
 
-	if wallet.Balance != InitialBalance {
-		t.Error("Incorrect initial balance")
-	}
-}
+	BeforeEach(func() {
+		wallet = NewWallet()
+	})
 
-func TestWallet_MarshalJSON(t *testing.T) {
-	jsonWallet, err := NewWallet().MarshalJSON()
-	if err != nil {
-		t.Error(err)
-	}
+	It("has correct initial balance", func() {
+		Expect(wallet.Balance).To(Equal(uint64(InitialBalance)))
+	})
 
-	var wallet map[string]interface{}
-	err = json.Unmarshal(jsonWallet, &wallet)
-	if err != nil {
-		t.Error(err)
-	}
+	Context("When marshalled to json", func() {
+		var (
+			jsonWallet         []byte
+			unmarshalledWallet map[string]interface{}
+			err, err2          error
+		)
 
-	balance, ok := wallet["balance"].(float64)
-	if ok {
-		if int(balance) != InitialBalance {
-			t.Errorf("invalid balance: got %d, expected %d", int(balance), InitialBalance)
-		}
-	} else {
-		t.Error("balance is not uint64")
-	}
+		BeforeEach(func() {
+			jsonWallet, err = wallet.MarshalJSON()
+			err2 = json.Unmarshal(jsonWallet, &unmarshalledWallet)
+		})
 
-	publicKey, ok := wallet["publicKey"].(string)
-	if ok {
-		if !regexp.MustCompile(`^[0-9a-zA-Z+/=]{88}$`).MatchString(publicKey) {
-			t.Errorf("Bad public key format: %s", publicKey)
-		}
-	} else {
-		t.Error("public key is not a string")
-	}
-}
+		It("produces no errors", func() {
+			Expect(err).NotTo(HaveOccurred())
+			Expect(err2).NotTo(HaveOccurred())
+		})
 
-//func TestWallet_SignTransaction(t *testing.T) {
-//	wallet1 := NewWallet()
-//	wallet2 := NewWallet()
-//	tx, err := NewTransaction(wallet1, wallet2.PublicKey, 50)
-//	if err != nil {
-//		t.Error(err)
-//		return
-//	}
-//	wallet1.SignTransaction(tx)
-//}
+		It("has correct balance", func() {
+			balance, ok := unmarshalledWallet["balance"].(float64)
+
+			Expect(ok).To(BeTrue())
+			Expect(uint64(balance)).To(Equal(uint64(InitialBalance)))
+		})
+
+		It("has correct public key", func() {
+			publicKey, ok := unmarshalledWallet["publicKey"].(string)
+
+			Expect(ok).To(BeTrue())
+			Expect(publicKey).To(MatchRegexp(`^[0-9a-zA-Z+/=]{88}$`))
+		})
+	})
+})
