@@ -21,7 +21,7 @@ var _ = Describe("Transaction", func() {
 	BeforeEach(func() {
 		testKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		recipientAddr = testKey.PublicKey
-		txAmount = uint64(50)
+		txAmount = 50
 		wallet = NewWallet()
 		tx, err = NewTransaction(wallet, recipientAddr, txAmount)
 	})
@@ -49,14 +49,49 @@ var _ = Describe("Transaction", func() {
 
 	})
 
-	It("validates correct TX", func() {
+	It("is correct and is verified successfully", func() {
 		Expect(tx.VerifySignature(wallet.PublicKey)).To(BeTrue())
 	})
 
-	It("invalidates corrupt TX", func() {
+	It("is corrupt and is not verified", func() {
 		tx.Outputs[0].amount = wallet.Balance
 
 		Expect(tx.VerifySignature(wallet.PublicKey)).To(BeFalse())
 	})
 
+	Describe("updating a transaction", func() {
+		var (
+			nextAmount    uint64
+			nextRecipient ecdsa.PublicKey
+		)
+
+		BeforeEach(func() {
+			nextAmount = 20
+			testKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			nextRecipient = testKey.PublicKey
+			err = tx.Update(wallet, nextRecipient, nextAmount)
+		})
+
+		It("subtracts next amount from sender's output", func() {
+			var senderTxo TransactionOutput
+			for _, txo := range tx.Outputs {
+				if txo.address == wallet.PublicKey {
+					senderTxo = txo
+					break
+				}
+			}
+			Expect(senderTxo.amount).To(Equal(wallet.Balance - txAmount - nextAmount))
+		})
+
+		It("outputs amount for next recipient", func() {
+			var nextTxo TransactionOutput
+			for _, txo := range tx.Outputs {
+				if txo.address == nextRecipient {
+					nextTxo = txo
+					break
+				}
+			}
+			Expect(nextTxo.amount).To(Equal(nextAmount))
+		})
+	})
 })

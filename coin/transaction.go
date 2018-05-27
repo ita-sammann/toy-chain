@@ -45,6 +45,28 @@ func NewTransaction(senderWallet Wallet, recipientAddr ecdsa.PublicKey, amount u
 	return tx, nil
 }
 
+func (tx *Transaction) Update(senderWallet Wallet, recipientAddr ecdsa.PublicKey, amount uint64) error {
+	var senderIdx int
+	for i, txo := range tx.Outputs {
+		if txo.address == senderWallet.PublicKey {
+			senderIdx = i
+			break
+		}
+	}
+	if amount > tx.Outputs[senderIdx].amount {
+		return toy_chain.ErrTransactionAmountExceedsBalance
+	}
+	tx.Outputs[senderIdx].amount -= amount
+	tx.Outputs = append(
+		tx.Outputs,
+		TransactionOutput{
+			amount,
+			recipientAddr,
+		},
+	)
+	return senderWallet.SignTransaction(tx)
+}
+
 func (tx Transaction) VerifySignature(publicKey ecdsa.PublicKey) bool {
 	txoHash := sha256.Sum256(tx.Outputs.MarshalBin())
 	return ecdsa.Verify(&publicKey, txoHash[:], tx.Input.signature.r, tx.Input.signature.s)
